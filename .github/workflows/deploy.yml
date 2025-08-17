@@ -10,18 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      # Setup key
+      
+      # Setup SSH key
       - run: set -eu
       - run: mkdir "$HOME/.ssh"
       - run: echo "$ID_RSA" > "$HOME/.ssh/id_rsa"
         env:
           ID_RSA: ${{ secrets.ID_RSA }}
       - run: chmod 600 "$HOME/.ssh/id_rsa"
+      
       # Install dependencies
       - run: npm ci
-      # Build (если требуется, например, для TypeScript)
-      - run: npm run build  # Уберите, если сборка не нужна
-      # Deploy
+      
+      # Build (просто проверяем что все работает)
+      - run: npm run build
+      
+      # Deploy files
       - run: rsync -e "ssh -p 22 -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=no -v" --archive --compress --delete . lllkojlhuk_ssh@lllkojlhuk.beget.tech:/home/l/lllkojlhuk/sushikub/public_html/server
-      # Restart server (пример для Node.js с pm2)
-      - run: ssh -p 22 -i $HOME/.ssh/id_rsa lllkojlhuk_ssh@lllkojlhuk.beget.tech "cd /home/l/lllkojlhuk/sushikub/public_html/server && npm install && pm2 restart all || pm2 start npm --name 'server' -- start"
+      
+      # Restart server (без PM2, используем стандартные команды Node.js)
+      - run: ssh -p 22 -i $HOME/.ssh/id_rsa lllkojlhuk_ssh@lllkojlhuk.beget.tech "cd /home/l/lllkojlhuk/sushikub/public_html/server && pkill -f 'node index.js' || true && npm install --production && nohup node index.js > server.log 2>&1 &"
