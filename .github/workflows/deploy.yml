@@ -26,7 +26,7 @@ jobs:
       - run: npm run build
       
       # Deploy files 
-      - run: rsync -e "ssh -p 22 -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=no -v" --archive --compress --delete . lllkojlhuk_ssh@lllkojlhuk.beget.tech:/home/l/lllkojlhuk/sushikub/public_html/server
+      - run: rsync -e "ssh -p 22 -i $HOME/.ssh/id_rsa -o StrictHostKeyChecking=no -v" --archive --compress --delete --exclude='.env' . lllkojlhuk_ssh@lllkojlhuk.beget.tech:/home/l/lllkojlhuk/sushikub/public_html/server
       
       # Restart server (без PM2, используем стандартные команды Node.js)
       - run: ssh -p 22 -i $HOME/.ssh/id_rsa lllkojlhuk_ssh@lllkojlhuk.beget.tech "cd /home/l/lllkojlhuk/sushikub/public_html/server && pkill -f 'node index.js' || true && npm install --production && nohup node index.js > server.log 2>&1 &"
