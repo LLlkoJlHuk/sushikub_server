@@ -9,7 +9,8 @@ const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0'; // ✅ ИСПРАВЛЕНИЕ: Привязка ко всем интерфейсам
 
 const app = express();
 
@@ -19,16 +20,32 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
-// Настройка CORS с ограничениями
+// ✅ ИСПРАВЛЕНИЕ: Правильная настройка CORS для продакшена
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com']
+    ? [
+        'https://sushi.lllkojlhuk.ru',
+        'http://sushi.lllkojlhuk.ru',
+        process.env.ALLOWED_ORIGIN
+      ]
     : true, // В разработке разрешаем все
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ✅ ДОБАВЛЕНИЕ: Тестовый endpoint для проверки работы
+app.get('/test', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Server is working!', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV 
+  });
+});
 
 app.get('/:filename.webp', (req, res) => {
   const filePath = path.join(__dirname, 'static', req.params.filename + '.webp');
@@ -47,31 +64,27 @@ app.get('/:filename.png', (req, res) => {
 
 app.use(express.static(path.resolve(__dirname, 'static')));
 
-// Rate limiting для 1000+ пользователей в день (только для публичных API)
-// Архитектура: Один админ-аккаунт + публичные пользователи без авторизации
-// Расчет: 1000 пользователей ÷ 24 часа ÷ 4 (15-мин окна) = ~10 пользователей одновременно
-// Каждый пользователь может сделать ~1500 запросов за 15 минут (активная сессия)
+// Rate limiting для публичных API (снижено для старой версии Node.js)
 const publicApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 минут
-  max: 15000, // 15000 запросов на 15 минут с одного IP для публичных API
+  max: 5000, // ✅ ИСПРАВЛЕНИЕ: Снижено для совместимости
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Пропускаем статические файлы, изображения и админские endpoints
     return req.path.startsWith('/static/') || 
            req.path.match(/\.(webp|jpg|jpeg|png|gif|ico|css|js|svg)$/) ||
            req.path.startsWith('/api/auth/') ||
-           req.path.startsWith('/api/admin/');
+           req.path.startsWith('/api/admin/') ||
+           req.path === '/test'; // ✅ ДОБАВЛЕНИЕ: Пропускаем тестовый endpoint
   }
 });
 
 app.use('/api/', publicApiLimiter);
 
-// Rate limiting для аутентификации администратора (только один аккаунт)
 const adminAuthLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 минут
-  max: 10, // 10 попыток входа на 15 минут (достаточно для одного админа)
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: 'Too many login attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -79,10 +92,9 @@ const adminAuthLimiter = rateLimit({
 
 app.use('/api/auth/', adminAuthLimiter);
 
-// Rate limiting для админских операций (управление товарами, заказами)
 const adminApiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 минут
-  max: 1000, // 1000 операций на 15 минут с одного IP для админки
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
   message: 'Too many admin operations, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -90,27 +102,17 @@ const adminApiLimiter = rateLimit({
 
 app.use('/api/admin/', adminApiLimiter);
 
-// Улучшенная обработка файлов
+// ✅ ИСПРАВЛЕНИЕ: Упрощенная настройка файлов для совместимости
 app.use(fileUpload({
   createParentPath: true,
   limits: { 
-    fileSize: 50 * 1024 * 1024 // 50MB max file size
+    fileSize: 10 * 1024 * 1024 // Снижено до 10MB
   },
   abortOnLimit: true,
   safeFileNames: true,
   preserveExtension: true,
   useTempFiles: true,
-  tempFileDir: '/tmp/',
-  parseNested: false,
-  // Валидация типов файлов
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG and WebP are allowed.'), false);
-    }
-  }
+  tempFileDir: '/tmp/'
 }));
 
 app.use('/api', router);
@@ -121,13 +123,34 @@ module.exports = app;
 if (require.main === module) {
   const start = async () => {
     try {
+      console.log('Starting server...');
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('Host:', HOST);
+      console.log('Port:', PORT);
+      
       await sequelize.authenticate();
       console.log('Database connection established successfully.');
+      
       await sequelize.sync();
       console.log('Database synchronized successfully.');
-      app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+      
+      // ✅ ИСПРАВЛЕНИЕ: Привязка к HOST (0.0.0.0) вместо localhost
+      const server = app.listen(PORT, HOST, () => {
+        console.log(`Server is running on ${HOST}:${PORT}`);
+        console.log(`Server process PID: ${process.pid}`);
+      });
+      
+      // ✅ ДОБАВЛЕНИЕ: Graceful shutdown
+      process.on('SIGTERM', () => {
+        console.log('SIGTERM received, shutting down gracefully');
+        server.close(() => {
+          console.log('Process terminated');
+        });
+      });
+      
     } catch (e) {
-      console.log('Error starting server:', e);
+      console.error('Error starting server:', e);
+      process.exit(1);
     }
   }
 
