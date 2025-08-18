@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v2
       
       # Setup SSH key
-      - run: set -eu
+      - run: set -eu 
       - run: mkdir "$HOME/.ssh"
       - run: echo "$ID_RSA" > "$HOME/.ssh/id_rsa"
         env:
