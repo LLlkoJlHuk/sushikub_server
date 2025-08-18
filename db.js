@@ -3,7 +3,7 @@ require('dotenv').config({
   path: process.env.NODE_ENV === 'production' ? '.env' : '.env.development' 
 });
 
-// ✅ ИСПРАВЛЕНИЕ: Добавлена подробная отладочная информация
+// ✅ Отладочная информация
 console.log('Database configuration:');
 console.log('- DB_HOST:', process.env.DB_HOST);
 console.log('- DB_PORT:', process.env.DB_PORT);
@@ -12,18 +12,16 @@ console.log('- DB_USER:', process.env.DB_USER);
 console.log('- Environment:', process.env.NODE_ENV);
 
 const sequelize = new Sequelize(
-  process.env.DB_NAME, // Название базы данных
-  process.env.DB_USER, // Пользователь
-  process.env.DB_PASSWORD, // Пароль
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
   {
     dialect: 'mysql',
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 3306,
     dialectOptions: {
-      connectTimeout: 60000, // ✅ ИСПРАВЛЕНИЕ: Увеличен таймаут
-      acquireTimeout: 60000,
-      timeout: 60000,
-      // ✅ ДОБАВЛЕНИЕ: Настройки для MySQL на Beget
+      connectTimeout: 60000, // ✅ Увеличенный таймаут для Beget
+      // ✅ ИСПРАВЛЕНИЕ: убраны acquireTimeout и timeout (не поддерживаются mysql2)
       ssl: process.env.DB_SSL === 'true' ? {
         rejectUnauthorized: false
       } : false,
@@ -32,21 +30,21 @@ const sequelize = new Sequelize(
     pool: {
       max: 5,
       min: 0,
-      acquire: 30000,
+      acquire: 30000, // ✅ Правильное место для acquire
       idle: 10000
     },
-    // ✅ ИСПРАВЛЕНИЕ: Включаем логирование только в development
+    // ✅ Отключаем логирование в продакшене
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     define: {
       charset: 'utf8mb4',
       collate: 'utf8mb4_unicode_ci',
       timestamps: true
     },
-    timezone: '+03:00' // ✅ ДОБАВЛЕНИЕ: Московское время
+    timezone: '+03:00'
   }
 );
 
-// ✅ ДОБАВЛЕНИЕ: Тест подключения к базе
+// ✅ Тест подключения к базе
 sequelize.authenticate()
   .then(() => {
     console.log('✅ MySQL connection test successful');
