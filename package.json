@@ -5,32 +5,30 @@
   "scripts": {
     "dev": "nodemon index.js",
     "build": "echo 'Build completed'",
-    "start": "NODE_ENV=production node index.js"
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
-  "engines": {
-    "node": ">=16.0.0"
-  },
+  "description": "", 
   "dependencies": {
-    "bcrypt": "^5.1.0",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
-    "dotenv": "^16.0.3",
-    "express": "^4.18.2",
-    "express-fileupload": "^1.4.0",
-    "express-rate-limit": "^6.7.0",
-    "express-validator": "^6.15.0",
-    "fast-csv": "^4.3.6",
-    "helmet": "^6.1.5",
-    "jsonwebtoken": "^9.0.0",
-    "mysql2": "^3.2.0",
-    "sequelize": "^6.29.3",
-    "uuid": "^9.0.0"
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "express-fileupload": "^1.5.2",
+    "express-rate-limit": "^8.0.1",
+    "express-validator": "^7.2.1",
+    "fast-csv": "^5.0.5",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^3.1.10"
   }
 }
