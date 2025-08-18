@@ -10,8 +10,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
 const PORT = process.env.PORT || 3000;
-// ✅ ИСПРАВЛЕНИЕ для Beget: слушаем localhost вместо 0.0.0.0
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0'; // ✅ ИСПРАВЛЕНИЕ: Привязка ко всем интерфейсам
 
 const app = express();
 
@@ -29,7 +28,7 @@ app.use(cors({
         'http://sushi.lllkojlhuk.ru',
         process.env.ALLOWED_ORIGIN
       ]
-    : true,
+    : true, // В разработке разрешаем все
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -42,11 +41,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.get('/test', (req, res) => {
   res.json({ 
     status: 'OK', 
-    message: 'Server is working on Beget!', 
+    message: 'Server is working!', 
     timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV,
-    host: HOST,
-    port: PORT
+    env: process.env.NODE_ENV 
   });
 });
 
@@ -67,10 +64,10 @@ app.get('/:filename.png', (req, res) => {
 
 app.use(express.static(path.resolve(__dirname, 'static')));
 
-// Rate limiting (снижено для совместимости)
+// Rate limiting для публичных API (снижено для старой версии Node.js)
 const publicApiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5000,
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 5000, // ✅ ИСПРАВЛЕНИЕ: Снижено для совместимости
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -79,7 +76,7 @@ const publicApiLimiter = rateLimit({
            req.path.match(/\.(webp|jpg|jpeg|png|gif|ico|css|js|svg)$/) ||
            req.path.startsWith('/api/auth/') ||
            req.path.startsWith('/api/admin/') ||
-           req.path === '/test';
+           req.path === '/test'; // ✅ ДОБАВЛЕНИЕ: Пропускаем тестовый endpoint
   }
 });
 
@@ -105,11 +102,11 @@ const adminApiLimiter = rateLimit({
 
 app.use('/api/admin/', adminApiLimiter);
 
-// Упрощенная настройка файлов
+// ✅ ИСПРАВЛЕНИЕ: Упрощенная настройка файлов для совместимости
 app.use(fileUpload({
   createParentPath: true,
   limits: { 
-    fileSize: 10 * 1024 * 1024
+    fileSize: 10 * 1024 * 1024 // Снижено до 10MB
   },
   abortOnLimit: true,
   safeFileNames: true,
@@ -137,14 +134,13 @@ if (require.main === module) {
       await sequelize.sync();
       console.log('Database synchronized successfully.');
       
-      // ✅ ИСПРАВЛЕНИЕ для Beget: привязка к localhost
+      // ✅ ИСПРАВЛЕНИЕ: Привязка к HOST (0.0.0.0) вместо localhost
       const server = app.listen(PORT, HOST, () => {
-        console.log(`✅ Server is running on ${HOST}:${PORT}`);
-        console.log(`🎯 Server process PID: ${process.pid}`);
-        console.log(`🔗 Test URL: http://${HOST}:${PORT}/test`);
+        console.log(`Server is running on ${HOST}:${PORT}`);
+        console.log(`Server process PID: ${process.pid}`);
       });
       
-      // Graceful shutdown
+      // ✅ ДОБАВЛЕНИЕ: Graceful shutdown
       process.on('SIGTERM', () => {
         console.log('SIGTERM received, shutting down gracefully');
         server.close(() => {
@@ -153,7 +149,7 @@ if (require.main === module) {
       });
       
     } catch (e) {
-      console.error('❌ Error starting server:', e);
+      console.error('Error starting server:', e);
       process.exit(1);
     }
   }
