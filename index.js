@@ -20,9 +20,13 @@ app.use(helmet({
 }));
 
 // Настройка CORS с ограничениями
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com']
+    ? allowedOrigins
     : true, // В разработке разрешаем все
   credentials: true
 }));
@@ -112,6 +116,22 @@ app.use(fileUpload({
     }
   }
 }));
+
+// Статические файлы React приложения (только в продакшене)
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.resolve(__dirname, 'static', 'client')));
+  
+  // Обработка SPA маршрутов - всегда возвращаем index.html для клиентских маршрутов
+  app.get('*', (req, res, next) => {
+    // Пропускаем API запросы и статические файлы
+    if (req.path.startsWith('/api/') || 
+        req.path.match(/\.(webp|jpg|jpeg|png|gif|ico|css|js|svg|txt|json)$/)) {
+      return next();
+    }
+    
+    res.sendFile(path.resolve(__dirname, 'static', 'client', 'index.html'));
+  });
+}
 
 app.use('/api', router);
 app.use(errorHandler);
