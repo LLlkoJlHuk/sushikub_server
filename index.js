@@ -34,6 +34,21 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+app.get('/:filename.webp', (req, res) => {
+  const filePath = path.join(__dirname, 'static', req.params.filename + '.webp');
+  res.sendFile(filePath);
+});
+
+app.get('/:filename.jpg', (req, res) => {
+  const filePath = path.join(__dirname, 'static', req.params.filename + '.jpg');
+  res.sendFile(filePath);
+});
+
+app.get('/:filename.png', (req, res) => {
+  const filePath = path.join(__dirname, 'static', req.params.filename + '.png');
+  res.sendFile(filePath);
+});
+
 app.use(express.static(path.resolve(__dirname, 'static')));
 
 // Rate limiting для 1000+ пользователей в день (только для публичных API)
@@ -107,7 +122,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.resolve(__dirname, 'static', 'client')));
   
   // Обработка SPA маршрутов - всегда возвращаем index.html для клиентских маршрутов
-  app.get('/*', (req, res, next) => {
+  app.get('*', (req, res, next) => {
     // Пропускаем API запросы и статические файлы
     if (req.path.startsWith('/api/') || 
         req.path.match(/\.(webp|jpg|jpeg|png|gif|ico|css|js|svg|txt|json)$/)) {
