@@ -2,6 +2,7 @@ const path = require('path');
 const uuid = require('uuid');
 const {Product, Type, Category} = require('../models/models');	
 const ApiError = require('../error/ApiError');
+const sequelize = require('../db');
 
 // Функция для санитизации строк
 const sanitizeString = (str) => {
@@ -100,7 +101,8 @@ class ProductController {
 
 	async getAllProducts(req, res, next) {
 		try {
-			const { categoryId, typeId, inStock } = req.query;
+			const { categoryId, typeId, inStock, search } = req.query;
+			const { Op } = require('sequelize');
 			
 			// Валидация и санитизация параметров запроса
 			let whereConditions = {};
@@ -129,13 +131,33 @@ class ProductController {
 				}
 			}
 			
+			// Определяем порядок сортировки в зависимости от наличия поиска
+			let orderClause = [['order', 'ASC'], ['id', 'ASC']]; // По умолчанию
+			
+			// Добавляем поиск по названию
+			if (search) {
+				const sanitizedSearch = sanitizeString(search);
+				if (sanitizedSearch.length > 0) {
+					whereConditions.name = {
+						[Op.iLike]: `%${sanitizedSearch}%`
+					};
+					
+					// Для поиска используем простую сортировку по алфавиту
+					orderClause = [
+						['name', 'ASC'],
+						['order', 'ASC']
+					];
+				}
+			}
+			
 			// Загружаем все товары без пагинации
 			const products = await Product.findAll({
 				where: whereConditions,
 				include: [
 					{model: Type, as: 'type'}, 
 					{model: Category, as: 'category'}
-				]
+				],
+				order: orderClause
 			});
 			
 			return res.json(products); 
