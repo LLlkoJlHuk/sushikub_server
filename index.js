@@ -34,17 +34,17 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.get('/:filename\\.webp', (req, res) => {
+app.get('/:filename.webp', (req, res) => {
   const filePath = path.join(__dirname, 'static', req.params.filename + '.webp');
   res.sendFile(filePath);
 });
 
-app.get('/:filename\\.jpg', (req, res) => {
+app.get('/:filename.jpg', (req, res) => {
   const filePath = path.join(__dirname, 'static', req.params.filename + '.jpg');
   res.sendFile(filePath);
 });
 
-app.get('/:filename\\.png', (req, res) => {
+app.get('/:filename.png', (req, res) => {
   const filePath = path.join(__dirname, 'static', req.params.filename + '.png');
   res.sendFile(filePath);
 });
