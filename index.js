@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ silent: true });
 const express = require("express");
 const sequelize = require("./db");
 const cors = require("cors");
@@ -34,22 +34,20 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.get('/:filename.webp', (req, res) => {
-  const filePath = path.join(__dirname, 'static', req.params.filename + '.webp');
-  res.sendFile(filePath);
-});
-
-app.get('/:filename.jpg', (req, res) => {
-  const filePath = path.join(__dirname, 'static', req.params.filename + '.jpg');
-  res.sendFile(filePath);
-});
-
-app.get('/:filename.png', (req, res) => {
-  const filePath = path.join(__dirname, 'static', req.params.filename + '.png');
-  res.sendFile(filePath);
+// Корректные роуты для статических файлов
+app.get(/.*\.(webp|jpg|jpeg|png|gif|ico)$/, (req, res) => {
+  const filePath = path.join(__dirname, 'static', req.path);
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      res.status(404).send('File not found');
+    }
+  });
 });
 
 app.use(express.static(path.resolve(__dirname, 'static')));
+
+// Раздача статических ресурсов из папки assets (для Vite build)
+app.use('/assets', express.static(path.resolve(__dirname, 'static', 'client', 'assets')));
 
 // Rate limiting для 1000+ пользователей в день (только для публичных API)
 // Архитектура: Один админ-аккаунт + публичные пользователи без авторизации
