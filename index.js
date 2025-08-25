@@ -115,12 +115,15 @@ app.use(fileUpload({
   }
 }));
 
+// API роуты ПЕРВЫМИ (важно!)
+app.use('/api', router);
+
 // Статические файлы React приложения (только в продакшене)
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.resolve(__dirname, 'static', 'client')));
   
-  // Обработка SPA маршрутов - всегда возвращаем index.html для клиентских маршрутов
-  app.get('*', (req, res, next) => {
+  // БЕЗОПАСНЫЙ SPA роут - используем регулярное выражение вместо *
+  app.get(/^(?!\/api).*/, (req, res, next) => {
     // Пропускаем API запросы и статические файлы
     if (req.path.startsWith('/api/') || 
         req.path.match(/\.(webp|jpg|jpeg|png|gif|ico|css|js|svg|txt|json)$/)) {
@@ -131,7 +134,6 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.use('/api', router);
 app.use(errorHandler);
 
 module.exports = app;
