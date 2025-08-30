@@ -16,7 +16,7 @@ const imageResizeMiddleware = async (req, res, next) => {
   }
 
   // Получаем параметры из query string
-  const { w: width, h: height, q: quality = 85, f: format } = req.query
+  const { w: width, h: height, q: quality = 75, f: format } = req.query
   
   // Если нет параметров ресайза, передаем дальше
   if (!width && !height) {
@@ -88,27 +88,22 @@ const imageResizeMiddleware = async (req, res, next) => {
         sharpPipeline = sharpPipeline.webp({ quality: qualityValue })
     }
 
-    // Обрабатываем и отправляем изображение напрямую
+    // Сохраняем в кэш и отправляем клиенту
     sharpPipeline
-      .toBuffer()
-      .then(async (buffer) => {
-        // Сохраняем в кэш для будущих запросов
-        fs.writeFileSync(cachePath, buffer)
-        
+      .toFile(cachePath)
+      .then(async () => {
         // Получаем метаданные обработанного изображения
-        const processedMetadata = await sharp(buffer).metadata()
+        const processedMetadata = await sharp(cachePath).metadata()
         
         // Устанавливаем правильные заголовки
         res.setHeader('Content-Type', `image/${outputFormat}`)
         res.setHeader('Cache-Control', 'public, max-age=31536000') // 1 год
-        res.setHeader('Content-Length', buffer.length.toString())
         res.setHeader('X-Image-Width', processedMetadata.width.toString())
         res.setHeader('X-Image-Height', processedMetadata.height.toString())
         res.setHeader('X-Original-Size', `${metadata.width}x${metadata.height}`)
         res.setHeader('X-Processed-Size', `${processedMetadata.width}x${processedMetadata.height}`)
         
-        // Отправляем обработанное изображение
-        res.end(buffer)
+        res.sendFile(cachePath)
       })
       .catch((error) => {
         console.error('Error processing image:', error)
