@@ -7,6 +7,7 @@ const productRouter = require("./productRouter");
 const bannerRouter = require("./bannerRouter");
 const settingsRouter = require("./settingsRouter");
 const frontpadRouter = require("./frontpadRouter");
+const testImageRouter = require("./testImageRouter");
 
 router.use('/auth', authRouter);
 router.use('/type', typeRouter);	
@@ -15,5 +16,6 @@ router.use('/product', productRouter);
 router.use('/banner', bannerRouter);
 router.use('/settings', settingsRouter);
 router.use('/frontpad', frontpadRouter);
+router.use('/test', testImageRouter);
 	
 module.exports = router;

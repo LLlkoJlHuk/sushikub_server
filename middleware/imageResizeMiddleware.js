@@ -32,10 +32,11 @@ const imageResizeMiddleware = async (req, res, next) => {
       return res.status(404).json({ error: 'Image not found' })
     }
 
-    // Генерируем имя кэшированного файла
-    const parsedPath = path.parse(originalPath)
-    const cacheFileName = `${parsedPath.name}_${width || 'auto'}x${height || 'auto'}_q${quality}.${format || 'webp'}`
-    const cachePath = path.join(parsedPath.dir, 'cache', cacheFileName)
+      // Генерируем имя кэшированного файла с версией
+  const parsedPath = path.parse(originalPath)
+  const version = Date.now() // Добавляем версию для избежания кэширования
+  const cacheFileName = `${parsedPath.name}_${width || 'auto'}x${height || 'auto'}_q${quality}_v${version}.${format || 'webp'}`
+  const cachePath = path.join(parsedPath.dir, 'cache', cacheFileName)
 
     // Создаем папку кэша если её нет
     const cacheDir = path.dirname(cachePath)
@@ -43,10 +44,10 @@ const imageResizeMiddleware = async (req, res, next) => {
       fs.mkdirSync(cacheDir, { recursive: true })
     }
 
-    // Если кэшированный файл существует, отдаем его
-    if (fs.existsSync(cachePath)) {
-      return res.sendFile(cachePath)
-    }
+    // Временно отключаем кэширование для отладки
+    // if (fs.existsSync(cachePath)) {
+    //   return res.sendFile(cachePath)
+    // }
 
     // Получаем метаданные оригинального изображения
     const metadata = await sharp(originalPath).metadata() 
@@ -59,12 +60,16 @@ const imageResizeMiddleware = async (req, res, next) => {
       const targetWidth = width ? parseInt(width) : undefined
       const targetHeight = height ? parseInt(height) : undefined
       
+      // Логируем целевые размеры
+      console.log(`Resizing to: ${targetWidth}x${targetHeight}`)
+      
       const resizeOptions = {
         width: targetWidth,
         height: targetHeight,
         fit: 'cover',
         position: 'center',
-        withoutEnlargement: true // Никогда не увеличиваем изображение
+        withoutEnlargement: true, // Никогда не увеличиваем изображение
+        background: { r: 255, g: 255, b: 255, alpha: 0 } // Прозрачный фон
       }
       sharpPipeline = sharpPipeline.resize(resizeOptions)
     }
@@ -92,26 +97,41 @@ const imageResizeMiddleware = async (req, res, next) => {
     sharpPipeline
       .toBuffer()
       .then(async (buffer) => {
-        // Сохраняем в кэш для будущих запросов
-        fs.writeFileSync(cachePath, buffer)
-        
         // Получаем метаданные обработанного изображения
         const processedMetadata = await sharp(buffer).metadata()
         
+        // Логируем для отладки
+        console.log(`Image processed: ${req.path}`)
+        console.log(`Original: ${metadata.width}x${metadata.height}`)
+        console.log(`Processed: ${processedMetadata.width}x${processedMetadata.height}`)
+        console.log(`Size: ${(buffer.length / 1024).toFixed(1)}KB`)
+        
+        // Сохраняем в кэш для будущих запросов
+        try {
+          fs.writeFileSync(cachePath, buffer)
+        } catch (err) {
+          console.error('Cache write error:', err)
+        }
+        
         // Устанавливаем правильные заголовки
         res.setHeader('Content-Type', `image/${outputFormat}`)
-        res.setHeader('Cache-Control', 'public, max-age=31536000') // 1 год
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate') // Временно отключаем кэш
+        res.setHeader('Pragma', 'no-cache')
+        res.setHeader('Expires', '0')
         res.setHeader('Content-Length', buffer.length.toString())
         res.setHeader('X-Image-Width', processedMetadata.width.toString())
         res.setHeader('X-Image-Height', processedMetadata.height.toString())
         res.setHeader('X-Original-Size', `${metadata.width}x${metadata.height}`)
         res.setHeader('X-Processed-Size', `${processedMetadata.width}x${processedMetadata.height}`)
+        res.setHeader('X-Content-Optimized', 'true')
+        res.setHeader('X-Sharp-Version', require('sharp').versions.sharp)
         
         // Отправляем обработанное изображение
         res.end(buffer)
       })
       .catch((error) => {
         console.error('Error processing image:', error)
+        console.error('Sharp pipeline error:', error.stack)
         // В случае ошибки отдаем оригинал
         res.sendFile(originalPath)
       })
