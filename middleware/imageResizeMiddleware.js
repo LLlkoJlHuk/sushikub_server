@@ -22,22 +22,10 @@ const imageResizeMiddleware = async (req, res, next) => {
   // Получаем параметры из query string
   const { w: width, h: height, q: quality = 85, f: format } = req.query
   
-  // Если нет параметров ресайза, но это изображение товара, применяем базовую оптимизацию
+  // Если нет параметров ресайза, передаем дальше
   if (!width && !height) {
-    // Проверяем, является ли это изображением товара (содержит цифры в названии)
-    const isProductImage = /\d{10,}/.test(req.path)
-    
-    if (isProductImage) {
-      console.log(`✅ Applying default optimization for product image: ${req.path}`)
-      // Применяем базовую оптимизацию для изображений товаров
-      width = 800  // Максимальная ширина
-      height = 600 // Максимальная высота
-      quality = 85
-      format = 'webp'
-    } else {
-      console.log(`❌ No resize parameters found`)
-      return next()
-    }
+    console.log(`❌ No resize parameters found`)
+    return next()
   }
   
   console.log(`✅ Processing image resize: ${width}x${height}, quality: ${quality}`)
@@ -51,10 +39,11 @@ const imageResizeMiddleware = async (req, res, next) => {
       return res.status(404).json({ error: 'Image not found' })
     }
 
-      // Генерируем имя кэшированного файла
-      const parsedPath = path.parse(originalPath)
-      const cacheFileName = `${parsedPath.name}_${width || 'auto'}x${height || 'auto'}_q${quality}.${format || 'webp'}`
-      const cachePath = path.join(parsedPath.dir, 'cache', cacheFileName)
+      // Генерируем имя кэшированного файла с версией
+  const parsedPath = path.parse(originalPath)
+  const version = Date.now() // Добавляем версию для избежания кэширования
+  const cacheFileName = `${parsedPath.name}_${width || 'auto'}x${height || 'auto'}_q${quality}_v${version}.${format || 'webp'}`
+  const cachePath = path.join(parsedPath.dir, 'cache', cacheFileName)
 
     // Создаем папку кэша если её нет
     const cacheDir = path.dirname(cachePath)
@@ -62,11 +51,10 @@ const imageResizeMiddleware = async (req, res, next) => {
       fs.mkdirSync(cacheDir, { recursive: true })
     }
 
-    // Проверяем кэш
-    if (fs.existsSync(cachePath)) {
-      console.log(`✅ Serving from cache: ${cachePath}`)
-      return res.sendFile(cachePath)
-    }
+    // Временно отключаем кэширование для отладки
+    // if (fs.existsSync(cachePath)) {
+    //   return res.sendFile(cachePath)
+    // }
 
     // Получаем метаданные оригинального изображения
     const metadata = await sharp(originalPath).metadata() 
@@ -82,39 +70,14 @@ const imageResizeMiddleware = async (req, res, next) => {
       // Логируем целевые размеры
       console.log(`Resizing to: ${targetWidth}x${targetHeight}`)
       
-      // Определяем оптимальную стратегию ресайза
-      let resizeOptions = {
+      const resizeOptions = {
+        width: targetWidth,
+        height: targetHeight,
+        fit: 'cover',
+        position: 'center',
         withoutEnlargement: true, // Никогда не увеличиваем изображение
         background: { r: 255, g: 255, b: 255, alpha: 0 } // Прозрачный фон
       }
-      
-      // Если указаны оба размера, используем cover для заполнения
-      if (targetWidth && targetHeight) {
-        resizeOptions = {
-          ...resizeOptions,
-          width: targetWidth,
-          height: targetHeight,
-          fit: 'cover',
-          position: 'center'
-        }
-      }
-      // Если указана только ширина, сохраняем пропорции
-      else if (targetWidth) {
-        resizeOptions = {
-          ...resizeOptions,
-          width: targetWidth,
-          fit: 'inside'
-        }
-      }
-      // Если указана только высота, сохраняем пропорции
-      else if (targetHeight) {
-        resizeOptions = {
-          ...resizeOptions,
-          height: targetHeight,
-          fit: 'inside'
-        }
-      }
-      
       sharpPipeline = sharpPipeline.resize(resizeOptions)
     }
 
@@ -159,7 +122,9 @@ const imageResizeMiddleware = async (req, res, next) => {
         
         // Устанавливаем правильные заголовки
         res.setHeader('Content-Type', `image/${outputFormat}`)
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable') // Кэшируем на год
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate') // Временно отключаем кэш
+        res.setHeader('Pragma', 'no-cache')
+        res.setHeader('Expires', '0')
         res.setHeader('Content-Length', buffer.length.toString())
         res.setHeader('X-Image-Width', processedMetadata.width.toString())
         res.setHeader('X-Image-Height', processedMetadata.height.toString())
