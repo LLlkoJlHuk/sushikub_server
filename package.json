@@ -5,9 +5,7 @@
   "scripts": {
     "dev": "nodemon index.js",
     "build": "echo 'Build completed'",
-    "start": "node index.js",
-    "clear-cache": "node scripts/clearImageCache.js",
-    "test-images": "node scripts/testImageOptimization.js"
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "",

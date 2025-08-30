@@ -7,8 +7,7 @@ const fs = require('fs')
  * Параметры URL: ?w=width&h=height&q=quality&f=format
  */
 const imageResizeMiddleware = async (req, res, next) => {
-  console.log(`🖼️ Image middleware triggered for: ${req.path}`)
-  console.log(`Query params:`, req.query)
+  // Middleware для автоматического ресайза изображений
   
   // Проверяем, является ли запрос изображением
   const ext = path.extname(req.path).toLowerCase()
@@ -26,18 +25,15 @@ const imageResizeMiddleware = async (req, res, next) => {
   const hasResizeParams = width || height
   const isProductImage = /\d{10,}/.test(req.path)
   
-  // Логируем для отладки
-  console.log(`🔍 Request analysis: hasResizeParams=${hasResizeParams}, isProductImage=${isProductImage}`)
+  // Анализ запроса
   
   // Если нет параметров ресайза и не изображение товара - пропускаем
   if (!hasResizeParams && !isProductImage) {
-    console.log(`❌ No resize parameters and not a product image - skipping`)
     return next()
   }
   
   // Если нет параметров ресайза, но это изображение товара, применяем базовую оптимизацию
   if (!hasResizeParams && isProductImage) {
-    console.log(`✅ Applying default optimization for product image: ${req.path}`)
     // Применяем базовую оптимизацию для изображений товаров
     width = '800'  // Максимальная ширина
     height = '600' // Максимальная высота
@@ -45,15 +41,7 @@ const imageResizeMiddleware = async (req, res, next) => {
     format = 'webp'
   }
   
-  // ВАЖНО: Если есть параметры ресайза - ОБЯЗАТЕЛЬНО обрабатываем!
-  if (hasResizeParams) {
-    console.log(`✅ Processing resize request with parameters: w=${width}, h=${height}`)
-  }
-  
-  // Логируем все параметры для отладки
-  console.log(`🔍 Resize parameters: width=${width}, height=${height}, quality=${quality}, format=${format}`)
-  
-  console.log(`✅ Processing image resize: ${width}x${height}, quality: ${quality}`)
+  // Обрабатываем изображение
 
   try {
     // Путь к оригинальному файлу
@@ -75,11 +63,10 @@ const imageResizeMiddleware = async (req, res, next) => {
       fs.mkdirSync(cacheDir, { recursive: true })
     }
 
-    // Проверяем кэш
-    if (fs.existsSync(cachePath)) {
-      console.log(`✅ Serving from cache: ${cachePath}`)
-      return res.sendFile(cachePath)
-    }
+            // Проверяем кэш
+        if (fs.existsSync(cachePath)) {
+          return res.sendFile(cachePath)
+        }
 
     // Получаем метаданные оригинального изображения
     const metadata = await sharp(originalPath).metadata() 
@@ -92,8 +79,7 @@ const imageResizeMiddleware = async (req, res, next) => {
       const targetWidth = width ? parseInt(width) : undefined
       const targetHeight = height ? parseInt(height) : undefined
       
-      // Логируем целевые размеры
-      console.log(`Resizing to: ${targetWidth}x${targetHeight}`)
+      // Применяем ресайз
       
       // Определяем оптимальную стратегию ресайза
       let resizeOptions = {
@@ -157,11 +143,7 @@ const imageResizeMiddleware = async (req, res, next) => {
         // Получаем метаданные обработанного изображения
         const processedMetadata = await sharp(buffer).metadata()
         
-        // Логируем для отладки
-        console.log(`Image processed: ${req.path}`)
-        console.log(`Original: ${metadata.width}x${metadata.height}`)
-        console.log(`Processed: ${processedMetadata.width}x${processedMetadata.height}`)
-        console.log(`Size: ${(buffer.length / 1024).toFixed(1)}KB`)
+        // Обработка завершена
         
         // Сохраняем в кэш для будущих запросов
         try {
