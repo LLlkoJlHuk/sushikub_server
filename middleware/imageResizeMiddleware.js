@@ -45,16 +45,7 @@ const imageResizeMiddleware = async (req, res, next) => {
 
   try {
     // Путь к оригинальному файлу
-    let originalPath;
-    
-    // Если это изображение из /assets/ - ищем в клиентской папке
-    if (req.path.startsWith('/assets/')) {
-      originalPath = path.join(__dirname, '../sushikub_client/dist', req.path);
-    } 
-    // Если это статическое изображение - ищем в статической папке
-    else {
-      originalPath = path.join(__dirname, '../static', req.path);
-    }
+    const originalPath = path.join(__dirname, '../static', req.path)
     
     // Проверяем существование файла
     if (!fs.existsSync(originalPath)) {
