@@ -16,7 +16,7 @@ const imageResizeMiddleware = async (req, res, next) => {
   }
 
   // Получаем параметры из query string
-  const { w: width, h: height, q: quality = 85, f: format } = req.query
+  const { w: width, h: height, q: quality = 75, f: format } = req.query
   
   // Если нет параметров ресайза, передаем дальше
   if (!width && !height) {
@@ -54,27 +54,19 @@ const imageResizeMiddleware = async (req, res, next) => {
     // Создаем Sharp pipeline
     let sharpPipeline = sharp(originalPath)
 
-    // Применяем ресайз только если запрашиваемые размеры меньше оригинала
+    // Применяем ресайз ВСЕГДА если указаны параметры (но не увеличиваем)
     if (width || height) {
       const targetWidth = width ? parseInt(width) : undefined
       const targetHeight = height ? parseInt(height) : undefined
       
-      // Проверяем, не превышают ли запрашиваемые размеры оригинал
-      const shouldResize = (
-        (targetWidth && targetWidth < metadata.width) ||
-        (targetHeight && targetHeight < metadata.height)
-      )
-      
-      if (shouldResize) {
-        const resizeOptions = {
-          width: targetWidth,
-          height: targetHeight,
-          fit: 'cover',
-          position: 'center',
-          withoutEnlargement: true // Важно! Не увеличиваем изображение
-        }
-        sharpPipeline = sharpPipeline.resize(resizeOptions)
+      const resizeOptions = {
+        width: targetWidth,
+        height: targetHeight,
+        fit: 'cover',
+        position: 'center',
+        withoutEnlargement: true // Никогда не увеличиваем изображение
       }
+      sharpPipeline = sharpPipeline.resize(resizeOptions)
     }
 
     // Применяем качество и формат
@@ -99,7 +91,18 @@ const imageResizeMiddleware = async (req, res, next) => {
     // Сохраняем в кэш и отправляем клиенту
     sharpPipeline
       .toFile(cachePath)
-      .then(() => {
+      .then(async () => {
+        // Получаем метаданные обработанного изображения
+        const processedMetadata = await sharp(cachePath).metadata()
+        
+        // Устанавливаем правильные заголовки
+        res.setHeader('Content-Type', `image/${outputFormat}`)
+        res.setHeader('Cache-Control', 'public, max-age=31536000') // 1 год
+        res.setHeader('X-Image-Width', processedMetadata.width.toString())
+        res.setHeader('X-Image-Height', processedMetadata.height.toString())
+        res.setHeader('X-Original-Size', `${metadata.width}x${metadata.height}`)
+        res.setHeader('X-Processed-Size', `${processedMetadata.width}x${processedMetadata.height}`)
+        
         res.sendFile(cachePath)
       })
       .catch((error) => {
