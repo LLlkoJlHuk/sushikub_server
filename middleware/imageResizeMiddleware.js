@@ -26,8 +26,12 @@ const imageResizeMiddleware = async (req, res, next) => {
   const hasResizeParams = width || height
   const isProductImage = /\d{10,}/.test(req.path)
   
+  // Логируем для отладки
+  console.log(`🔍 Request analysis: hasResizeParams=${hasResizeParams}, isProductImage=${isProductImage}`)
+  
+  // Если нет параметров ресайза и не изображение товара - пропускаем
   if (!hasResizeParams && !isProductImage) {
-    console.log(`❌ No resize parameters and not a product image`)
+    console.log(`❌ No resize parameters and not a product image - skipping`)
     return next()
   }
   
@@ -39,6 +43,11 @@ const imageResizeMiddleware = async (req, res, next) => {
     height = '600' // Максимальная высота
     quality = '85'
     format = 'webp'
+  }
+  
+  // ВАЖНО: Если есть параметры ресайза - ОБЯЗАТЕЛЬНО обрабатываем!
+  if (hasResizeParams) {
+    console.log(`✅ Processing resize request with parameters: w=${width}, h=${height}`)
   }
   
   // Логируем все параметры для отладки
