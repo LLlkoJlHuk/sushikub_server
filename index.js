@@ -5,7 +5,6 @@ const cors = require("cors");
 const fileUpload = require("express-fileupload");
 const router = require("./routes/index");
 const errorHandler = require("./middleware/ErrorHandlerMiddleware");
-const imageResizeMiddleware = require("./middleware/imageResizeMiddleware");
 const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -35,8 +34,8 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Корректные роуты для статических файлов с поддержкой ресайза изображений
-app.get(/.*\.(webp|jpg|jpeg|png|gif|ico)$/, imageResizeMiddleware, (req, res) => {
+// Корректные роуты для статических файлов
+app.get(/.*\.(webp|jpg|jpeg|png|gif|ico)$/, (req, res) => {
   const filePath = path.join(__dirname, 'static', req.path);
   res.sendFile(filePath, (err) => {
     if (err) {
