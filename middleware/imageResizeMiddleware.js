@@ -22,27 +22,23 @@ const imageResizeMiddleware = async (req, res, next) => {
   // Получаем параметры из query string
   const { w: width, h: height, q: quality = 85, f: format } = req.query
   
-  // Проверяем, есть ли параметры ресайза или это изображение товара
-  const hasResizeParams = width || height
-  const isProductImage = /\d{10,}/.test(req.path)
-  
-  if (!hasResizeParams && !isProductImage) {
-    console.log(`❌ No resize parameters and not a product image`)
-    return next()
-  }
-  
   // Если нет параметров ресайза, но это изображение товара, применяем базовую оптимизацию
-  if (!hasResizeParams && isProductImage) {
-    console.log(`✅ Applying default optimization for product image: ${req.path}`)
-    // Применяем базовую оптимизацию для изображений товаров
-    width = '800'  // Максимальная ширина
-    height = '600' // Максимальная высота
-    quality = '85'
-    format = 'webp'
+  if (!width && !height) {
+    // Проверяем, является ли это изображением товара (содержит цифры в названии)
+    const isProductImage = /\d{10,}/.test(req.path)
+    
+    if (isProductImage) {
+      console.log(`✅ Applying default optimization for product image: ${req.path}`)
+      // Применяем базовую оптимизацию для изображений товаров
+      width = 800  // Максимальная ширина
+      height = 600 // Максимальная высота
+      quality = 85
+      format = 'webp'
+    } else {
+      console.log(`❌ No resize parameters found`)
+      return next()
+    }
   }
-  
-  // Логируем все параметры для отладки
-  console.log(`🔍 Resize parameters: width=${width}, height=${height}, quality=${quality}, format=${format}`)
   
   console.log(`✅ Processing image resize: ${width}x${height}, quality: ${quality}`)
 
@@ -55,7 +51,7 @@ const imageResizeMiddleware = async (req, res, next) => {
       return res.status(404).json({ error: 'Image not found' })
     }
 
-      // Генерируем имя кэшированного файла (без версии для лучшего кэширования)
+      // Генерируем имя кэшированного файла
       const parsedPath = path.parse(originalPath)
       const cacheFileName = `${parsedPath.name}_${width || 'auto'}x${height || 'auto'}_q${quality}.${format || 'webp'}`
       const cachePath = path.join(parsedPath.dir, 'cache', cacheFileName)

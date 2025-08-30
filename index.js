@@ -38,7 +38,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Сначала middleware для ресайза изображений (ВАЖНО: перед express.static!)
+// Корректные роуты для статических файлов с поддержкой ресайза изображений
 app.get(/.*\.(webp|jpg|jpeg|png|gif|ico)$/, imageResizeMiddleware, (req, res) => {
   const filePath = path.join(__dirname, 'static', req.path);
   res.sendFile(filePath, (err) => {
@@ -48,7 +48,6 @@ app.get(/.*\.(webp|jpg|jpeg|png|gif|ico)$/, imageResizeMiddleware, (req, res) =>
   });
 });
 
-// Затем статические файлы (если middleware не сработал)
 app.use(express.static(path.resolve(__dirname, 'static')));
 
 // Раздача статических ресурсов из папки assets (для Vite build)
@@ -127,8 +126,14 @@ app.use('/api', router);
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.resolve(__dirname, 'static', 'client')));
   
-  // SPA роут для клиентских страниц (НЕ для изображений!)
-  app.get(/^(?!\/api)(?!.*\.(webp|jpg|jpeg|png|gif|ico|css|js|svg|txt|json)$).*/, (req, res) => {
+  // БЕЗОПАСНЫЙ SPA роут - используем регулярное выражение вместо *
+  app.get(/^(?!\/api).*/, (req, res, next) => {
+    // Пропускаем API запросы и статические файлы
+    if (req.path.startsWith('/api/') || 
+        req.path.match(/\.(webp|jpg|jpeg|png|gif|ico|css|js|svg|txt|json)$/)) {
+      return next();
+    }
+    
     res.sendFile(path.resolve(__dirname, 'static', 'client', 'index.html'));
   });
 }
