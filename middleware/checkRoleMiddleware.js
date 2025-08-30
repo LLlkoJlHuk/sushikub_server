@@ -41,7 +41,6 @@ module.exports = function(req, res, next) {
 		} else if (error.name === 'TokenExpiredError') {
 			return res.status(401).json({message: "Token has expired"});
 		} else {
-			console.error('Admin role check middleware error:', error);
 			return res.status(500).json({message: "Internal server error"});
 		}
 	}

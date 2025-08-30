@@ -1,15 +1,17 @@
 const ApiError = require("../error/ApiError");
 
 module.exports = function (err, req, res, next) {
-	// Логируем все ошибки для отладки
-	console.error('Error occurred:', {
-		message: err.message,
-		stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-		url: req.url,
-		method: req.method,
-		ip: req.ip,
-		userAgent: req.get('User-Agent')
-	});
+	// Логируем только критические ошибки в продакшене
+	if (process.env.NODE_ENV === 'development') {
+		console.error('Error occurred:', {
+			message: err.message,
+			stack: err.stack,
+			url: req.url,
+			method: req.method,
+			ip: req.ip,
+			userAgent: req.get('User-Agent')
+		});
+	}
 
 	if (err instanceof ApiError) {
 		return res.status(err.status).json({

@@ -142,12 +142,10 @@ if (require.main === module) {
   const start = async () => {
     try {
       await sequelize.authenticate();
-      console.log('Database connection established successfully.');
       await sequelize.sync();
-      console.log('Database synchronized successfully.');
       app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
     } catch (e) {
-      console.log('Error starting server:', e);
+      // Ошибка запуска сервера
     }
   }
 
