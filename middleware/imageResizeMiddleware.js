@@ -7,15 +7,11 @@ const fs = require('fs')
  * Параметры URL: ?w=width&h=height&q=quality&f=format
  */
 const imageResizeMiddleware = async (req, res, next) => {
-  console.log(`🖼️ Image middleware triggered for: ${req.path}`)
-  console.log(`Query params:`, req.query)
-  
   // Проверяем, является ли запрос изображением
   const ext = path.extname(req.path).toLowerCase()
   const supportedFormats = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
   
   if (!supportedFormats.includes(ext)) {
-    console.log(`❌ Not an image format: ${ext}`)
     return next()
   }
 
@@ -24,11 +20,8 @@ const imageResizeMiddleware = async (req, res, next) => {
   
   // Если нет параметров ресайза, передаем дальше
   if (!width && !height) {
-    console.log(`❌ No resize parameters found`)
     return next()
   }
-  
-  console.log(`✅ Processing image resize: ${width}x${height}, quality: ${quality}`)
 
   try {
     // Путь к оригинальному файлу

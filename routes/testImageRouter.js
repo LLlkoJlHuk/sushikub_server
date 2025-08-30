@@ -12,7 +12,6 @@ router.get('/test-resize/:imageName', async (req, res) => {
     const { w: width = 100, h: height = 100, q: quality = 75 } = req.query
     
     const imagePath = path.join(__dirname, '../static', imageName)
-    console.log(`Looking for image at: ${imagePath}`)
     
     if (!fs.existsSync(imagePath)) {
       return res.status(404).json({ error: 'Image not found' })
