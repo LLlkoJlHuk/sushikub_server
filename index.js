@@ -14,6 +14,9 @@ const PORT = process.env.PORT || 5000;
 
 const app = express();
 
+// Настраиваем trust proxy для работы за nginx
+app.set('trust proxy', true);
+
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
