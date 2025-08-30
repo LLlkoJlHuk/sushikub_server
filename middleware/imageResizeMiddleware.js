@@ -56,6 +56,12 @@ const imageResizeMiddleware = async (req, res, next) => {
       originalPath = path.join(__dirname, '../static', req.path);
     }
     
+    // Отладочная информация
+    console.log(`🔍 Looking for image at: ${originalPath}`)
+    console.log(`🔍 File exists: ${fs.existsSync(originalPath)}`)
+    console.log(`🔍 Current directory: ${__dirname}`)
+    console.log(`🔍 Request path: ${req.path}`)
+    
     // Проверяем существование файла
     if (!fs.existsSync(originalPath)) {
       return res.status(404).json({ error: 'Image not found' })
