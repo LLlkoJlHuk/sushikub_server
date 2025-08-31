@@ -92,27 +92,18 @@ const adminApiLimiter = rateLimit({
 
 app.use('/api/admin/', adminApiLimiter);
 
-// Улучшенная обработка файлов
+// Обработка файлов
 app.use(fileUpload({
   createParentPath: true,
   limits: { 
-    fileSize: 50 * 1024 * 1024 // 50MB max file size
+    fileSize: 50 * 1024 * 1024
   },
   abortOnLimit: true,
   safeFileNames: true,
-  preserveExtension: true,
+  preserveExtension: false,
   useTempFiles: true,
   tempFileDir: '/tmp/',
-  parseNested: false,
-  // Валидация типов файлов
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG and WebP are allowed.'), false);
-    }
-  }
+  parseNested: false
 }));
 
 // API роуты ПЕРВЫМИ (важно!)

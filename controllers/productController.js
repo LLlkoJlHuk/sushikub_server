@@ -18,7 +18,7 @@ const validatePrice = (price) => {
 
 // Функция для валидации веса
 const validateWeight = (weight) => {
-  if (!weight) return true;
+  if (!weight || weight === '' || weight === '0') return true;
   const numWeight = parseInt(weight);
   return !isNaN(numWeight) && numWeight > 0 && numWeight <= 10000;
 };
@@ -29,6 +29,43 @@ const validateArticle = (article) => {
   return !isNaN(numArticle) && numArticle >= 0;
 };
 
+// Функция для определения расширения файла на основе MIME-типа
+const getFileExtension = (mimetype) => {
+  const mimeToExt = {
+    'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp'
+  };
+  
+  return mimeToExt[mimetype] || '.jpg';
+};
+
+// Функция для проверки, что файл действительно является изображением
+const validateImageFile = (file) => {
+  // Проверяем MIME-тип
+  const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!allowedMimeTypes.includes(file.mimetype)) {
+    return false;
+  }
+  
+  // Проверяем размер файла (минимум 100 байт, максимум 50MB)
+  if (file.size < 100 || file.size > 50 * 1024 * 1024) {
+    return false;
+  }
+  
+  // Проверяем расширение файла
+  const fileName = file.name || '';
+  const fileExtension = path.extname(fileName).toLowerCase();
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+  
+  if (fileExtension && !allowedExtensions.includes(fileExtension)) {
+    return false;
+  }
+  
+  return true;
+};
+
 class ProductController {
 	async createProduct(req, res, next) {
 		try {
@@ -36,7 +73,7 @@ class ProductController {
 			const {img} = req.files;
 			
 			// Валидация обязательных полей
-			if (!name || !price || !article || !categoryId || !typeId) {
+			if (!name || !name.trim() || !price || !article || !categoryId || !typeId) {
 				return next(ApiError.badRequest('Missing required fields'));
 			}
 			
@@ -46,15 +83,23 @@ class ProductController {
 				return next(ApiError.badRequest('Invalid product name length'));
 			}
 			
-			if (!validatePrice(price)) {
+			if (!price || price === '' || !validatePrice(price)) {
 				return next(ApiError.badRequest('Invalid price'));
 			}
 			
-			if (!validateArticle(article)) {
+			if (!article || article === '' || !validateArticle(article)) {
 				return next(ApiError.badRequest('Invalid article number'));
 			}
 			
-			if (weight && !validateWeight(weight)) {
+			if (!categoryId || categoryId === '') {
+				return next(ApiError.badRequest('Category is required'));
+			}
+			
+			if (!typeId || typeId === '') {
+				return next(ApiError.badRequest('Type is required'));
+			}
+			
+			if (weight && weight !== '' && weight !== '0' && !validateWeight(weight)) {
 				return next(ApiError.badRequest('Invalid weight'));
 			}
 			
@@ -63,16 +108,15 @@ class ProductController {
 				return next(ApiError.badRequest('Image is required'));
 			}
 			
-			// Проверка типа файла
-			const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-			if (!allowedMimeTypes.includes(img.mimetype)) {
-				return next(ApiError.badRequest('Invalid file type. Only JPEG, PNG and WebP are allowed.'));
+			// Проверка файла изображения
+			if (!validateImageFile(img)) {
+				return next(ApiError.badRequest('Invalid image file. Please upload a valid JPEG, PNG or WebP image.'));
 			}
 			
 			// Преобразуем inStock в булево значение
 			const inStockBoolean = inStock === 'true' || inStock === true;
 			
-			let fileName = uuid.v4() + path.extname(img.name);
+			let fileName = uuid.v4() + getFileExtension(img.mimetype);
 			const filePath = path.resolve(__dirname, '..', 'static', fileName);
 			
 			// Безопасное сохранение файла
@@ -81,14 +125,14 @@ class ProductController {
 			const product = await Product.create({
 				name: sanitizedName, 
 				price: parseInt(price), 
-				description: description ? sanitizeString(description) : null, 
-				article: parseInt(article), 
-				weight: weight ? parseInt(weight) : null, 
+				description: (description && description.trim() !== '') ? sanitizeString(description) : null, 
+				article: (article && article !== '') ? parseInt(article) : null, 
+				weight: (weight && weight !== '' && weight !== '0') ? parseInt(weight) : null, 
 				categoryId: parseInt(categoryId), 
 				typeId: parseInt(typeId), 
 				inStock: inStockBoolean, 
 				img: fileName, 
-				order: order ? parseInt(order) : 0
+				order: (order && order !== '') ? parseInt(order) : 0
 			});
 			
 			return res.json(product);		
@@ -240,6 +284,9 @@ class ProductController {
 			let updateData = {};
 			
 			if (name !== undefined) {
+				if (!name || name.trim() === '') {
+					return next(ApiError.badRequest('Product name is required'));
+				}
 				const sanitizedName = sanitizeString(name);
 				if (sanitizedName.length < 2 || sanitizedName.length > 100) {
 					return next(ApiError.badRequest('Invalid product name length'));
@@ -248,31 +295,34 @@ class ProductController {
 			}
 			
 			if (description !== undefined) {
-				updateData.description = description ? sanitizeString(description) : null;
+				updateData.description = (description && description.trim() !== '') ? sanitizeString(description) : null;
 			}
 			
 			if (price !== undefined) {
-				if (!validatePrice(price)) {
+				if (!price || price === '' || !validatePrice(price)) {
 					return next(ApiError.badRequest('Invalid price'));
 				}
 				updateData.price = parseInt(price);
 			}
 			
 			if (article !== undefined) {
-				if (!validateArticle(article)) {
+				if (!article || article === '' || !validateArticle(article)) {
 					return next(ApiError.badRequest('Invalid article number'));
 				}
 				updateData.article = parseInt(article);
 			}
 			
 			if (weight !== undefined) {
-				if (weight && !validateWeight(weight)) {
+				if (weight !== '' && weight !== '0' && !validateWeight(weight)) {
 					return next(ApiError.badRequest('Invalid weight'));
 				}
-				updateData.weight = weight ? parseInt(weight) : null;
+				updateData.weight = (weight && weight !== '' && weight !== '0') ? parseInt(weight) : null;
 			}
 			
 			if (categoryId !== undefined) {
+				if (!categoryId || categoryId === '') {
+					return next(ApiError.badRequest('Category is required'));
+				}
 				const numCategoryId = parseInt(categoryId);
 				if (isNaN(numCategoryId) || numCategoryId <= 0) {
 					return next(ApiError.badRequest('Invalid category ID'));
@@ -281,6 +331,9 @@ class ProductController {
 			}
 			
 			if (typeId !== undefined) {
+				if (!typeId || typeId === '') {
+					return next(ApiError.badRequest('Type is required'));
+				}
 				const numTypeId = parseInt(typeId);
 				if (isNaN(numTypeId) || numTypeId <= 0) {
 					return next(ApiError.badRequest('Invalid type ID'));
@@ -293,20 +346,19 @@ class ProductController {
 			}
 			
 			if (order !== undefined) {
-				updateData.order = order ? parseInt(order) : 0;
+				updateData.order = (order && order !== '') ? parseInt(order) : 0;
 			}
 			
 			// Если загружено новое изображение
 			if (req.files && req.files.img) {
 				const {img} = req.files;
 				
-				// Проверка типа файла
-				const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-				if (!allowedMimeTypes.includes(img.mimetype)) {
-					return next(ApiError.badRequest('Invalid file type. Only JPEG, PNG and WebP are allowed.'));
+				// Проверка файла изображения
+				if (!validateImageFile(img)) {
+					return next(ApiError.badRequest('Invalid image file. Please upload a valid JPEG, PNG or WebP image.'));
 				}
 				
-				let fileName = uuid.v4() + path.extname(img.name);
+				let fileName = uuid.v4() + getFileExtension(img.mimetype);
 				const filePath = path.resolve(__dirname, '..', 'static', fileName);
 				
 				// Безопасное сохранение файла
