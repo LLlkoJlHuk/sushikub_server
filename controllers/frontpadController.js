@@ -49,7 +49,7 @@ class FrontpadController {
         name: name,
         phone: phone ? '+' + phone.replace(/\D/g, '').replace(/^8/, '7') : '',
         mail: email || '',
-        descr: comment ? `Комментарий: ${comment}` : '',
+        descr: '',
         person: persons || 1
       }
       
@@ -57,6 +57,22 @@ class FrontpadController {
 
       // Нормализуем typeIsDelivery для надежной проверки
       const isDeliveryOrder = typeIsDelivery === true || typeIsDelivery === 'true' || typeIsDelivery === 1
+      
+      // Формируем комментарий в зависимости от типа заказа
+      let commentParts = []
+      
+      if (!isDeliveryOrder) {
+        // Для самовывоза добавляем соответствующий комментарий
+        commentParts.push('САМОВЫВОЗ')
+      }
+      
+      // Добавляем пользовательский комментарий если есть
+      if (comment) {
+        commentParts.push(`Комментарий: ${comment}`)
+      }
+      
+      // Объединяем все части комментария
+      data.descr = commentParts.join('. ')
       
       // Добавляем адрес доставки если это доставка
       if (isDeliveryOrder) {
@@ -77,8 +93,12 @@ class FrontpadController {
       // Добавляем время доставки в комментарий если указано
       if (!deliveryNow && time) {
         if (time && time.includes(' ') && time.includes(':')) {
-          const timeComment = `Клиент заказал на ${time}. `
-          data.descr = timeComment + (data.descr || '')
+          const timeComment = `Клиент заказал на ${time}`
+          if (data.descr) {
+            data.descr = timeComment + '. ' + data.descr
+          } else {
+            data.descr = timeComment
+          }
         }
       }
 
