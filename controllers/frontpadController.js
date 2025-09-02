@@ -58,13 +58,8 @@ class FrontpadController {
       // Нормализуем typeIsDelivery для надежной проверки
       const isDeliveryOrder = typeIsDelivery === true || typeIsDelivery === 'true' || typeIsDelivery === 1
       
-      // Формируем комментарий в зависимости от типа заказа
+      // Формируем комментарий и адрес в зависимости от типа заказа
       let commentParts = []
-      
-      if (!isDeliveryOrder) {
-        // Для самовывоза добавляем соответствующий комментарий
-        commentParts.push('САМОВЫВОЗ')
-      }
       
       // Добавляем пользовательский комментарий если есть
       if (comment) {
@@ -82,6 +77,9 @@ class FrontpadController {
         data.et = floor || ''
         data.apart = apartmentNumber || ''
       } else {
+        // Для самовывоза добавляем "САМОВЫВОЗ" в поле street
+        data.street = 'САМОВЫВОЗ'
+        
         // Для самовывоза добавляем информацию о филиале
         if (deliveryBranch === 'Ул. Лесопарковая, дом 27') {
           data.affiliate = 238
